@@ -3,25 +3,44 @@ const PORT = process.env.PORT || 3000;
 
 const wss = new WebSocket.Server({ port: PORT });
 
-let clients = [];
+let espSocket = null;
+let appSocket = null;
 
-wss.on('connection', function connection(ws) {
-  clients.push(ws);
-  console.log('Client connected. Total:', clients.length);
+wss.on('connection', (ws) => {
+  console.log('New client connected.');
 
-  ws.on('message', function incoming(message) {
-    console.log('Received:', message);
-    clients.forEach(client => {
-      if (client !== ws && client.readyState === WebSocket.OPEN) {
-        client.send(message);
-      }
-    });
+  ws.on('message', (message) => {
+    const msg = message.toString('utf8'); // Convert buffer to string
+    console.log('Received:', msg);
+
+    if (msg === 'ESP') {
+      espSocket = ws;
+      console.log('Registered ESP device.');
+    } else if (msg === 'APP') {
+      appSocket = ws;
+      console.log('Registered Flutter app.');
+    } else if (ws === appSocket && espSocket && espSocket.readyState === WebSocket.OPEN) {
+      espSocket.send(msg);
+      console.log('Forwarded to ESP:', msg);
+    } else if (ws === espSocket && appSocket && appSocket.readyState === WebSocket.OPEN) {
+      appSocket.send(msg);
+      console.log('Forwarded to APP:', msg);
+    } else {
+      console.log('Unhandled message or no valid peer connected.');
+    }
   });
 
   ws.on('close', () => {
-    clients = clients.filter(client => client !== ws);
-    console.log('Client disconnected. Total:', clients.length);
+    if (ws === espSocket) {
+      console.log('ESP disconnected.');
+      espSocket = null;
+    } else if (ws === appSocket) {
+      console.log('App disconnected.');
+      appSocket = null;
+    } else {
+      console.log('Unknown client disconnected.');
+    }
   });
 });
 
-console.log(`WebSocket server is running on port ${PORT}`);
+console.log(`✅ WebSocket server running on port ${PORT}`);
