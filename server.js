@@ -1,7 +1,8 @@
 const WebSocket = require('ws');
-const PORT = process.env.PORT || 3000;
+const http = require('http');
 
-const wss = new WebSocket.Server({ port: PORT });
+const server = http.createServer();
+const wss = new WebSocket.Server({ server });
 
 let espSocket = null;
 let appSocket = null;
@@ -10,7 +11,7 @@ wss.on('connection', (ws) => {
   console.log('New client connected.');
 
   ws.on('message', (message) => {
-    const msg = message.toString('utf8'); // Convert buffer to string
+    const msg = message.toString('utf8');
     console.log('Received:', msg);
 
     if (msg === 'ESP') {
@@ -43,4 +44,7 @@ wss.on('connection', (ws) => {
   });
 });
 
-console.log(`✅ WebSocket server running on port ${PORT}`);
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`WebSocket server running on port ${PORT}`);
+});
