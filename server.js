@@ -6,6 +6,7 @@ const wss = new WebSocket.Server({ server });
 
 let espSocket = null;
 let appSocket = null;
+let webAppSocket = null;
 
 wss.on('connection', (ws) => {
   console.log('New client connected.');
@@ -17,26 +18,42 @@ wss.on('connection', (ws) => {
     if (msg === 'ESP') {
       espSocket = ws;
       console.log('Registered ESP device.');
-    } else if (msg === 'APP') {
+    } 
+    else if (msg === 'APP') {
       appSocket = ws;
-      console.log('Registered Flutter app.');
-    } else if (ws === espSocket) {
-      // ESP sent something
+      console.log('Registered Mobile App.');
+    } 
+    else if (msg === 'WEBAPP') {
+      webAppSocket = ws;
+      console.log('Registered WebApp.');
+    }
+
+    else if (ws === espSocket) {
+      // Message from ESP → forward to app and webapp
       if (appSocket && appSocket.readyState === WebSocket.OPEN) {
         appSocket.send(msg);
-        console.log('Forwarded to APP:', msg);
-      } else {
-        console.log('ESP sent a message but APP not connected yet.');
+        console.log('Forwarded to Mobile APP:', msg);
       }
-    } else if (ws === appSocket) {
-      // APP sent something
+      if (webAppSocket && webAppSocket.readyState === WebSocket.OPEN) {
+        webAppSocket.send(msg);
+        console.log('Forwarded to WEBAPP:', msg);
+      }
+    } 
+    else if (ws === appSocket) {
+      // Message from Mobile App → forward to ESP
       if (espSocket && espSocket.readyState === WebSocket.OPEN) {
         espSocket.send(msg);
-        console.log('Forwarded to ESP:', msg);
-      } else {
-        console.log('APP sent a message but ESP not connected yet.');
+        console.log('Forwarded to ESP from APP:', msg);
       }
-    } else {
+    } 
+    else if (ws === webAppSocket) {
+      // Message from Web App → forward to ESP
+      if (espSocket && espSocket.readyState === WebSocket.OPEN) {
+        espSocket.send(msg);
+        console.log('Forwarded to ESP from WEBAPP:', msg);
+      }
+    } 
+    else {
       console.log('Unhandled message or unknown client.');
     }
   });
@@ -46,14 +63,16 @@ wss.on('connection', (ws) => {
       console.log('ESP disconnected.');
       espSocket = null;
     } else if (ws === appSocket) {
-      console.log('App disconnected.');
+      console.log('Mobile App disconnected.');
       appSocket = null;
+    } else if (ws === webAppSocket) {
+      console.log('WebApp disconnected.');
+      webAppSocket = null;
     } else {
       console.log('Unknown client disconnected.');
     }
   });
 });
-
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
