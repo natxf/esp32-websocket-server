@@ -15,10 +15,14 @@ wss.on('connection', (ws) => {
     const msg = message.toString('utf8');
     console.log('Received:', msg);
 
-    if (msg === 'ESP') {
+   if (msg === 'ESP') {
+      if (espSocket && espSocket !== ws) {
+        espSocket.close();
+      }
       espSocket = ws;
       console.log('Registered ESP device.');
-    } 
+    }
+
     else if (msg === 'APP') {
       appSocket = ws;
       console.log('Registered Mobile App.');
